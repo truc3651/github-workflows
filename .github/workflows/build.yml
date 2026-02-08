@@ -1,0 +1,29 @@
+name: Java build
+
+on:
+  workflow_call:
+    inputs:
+      java_version:
+        required: false
+        type: string
+        default: '17'
+      
+      java_distribution:
+        required: false
+        type: string
+        default: 'corretto'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+     - uses: actions/checkout@v4
+     - uses: ./.github/actions/java-gradle
+       with:
+          java_version: ${{ inputs.java_version }}
+          java_distribution: ${{ inputs.java_distribution }}
+          skip_tests: false

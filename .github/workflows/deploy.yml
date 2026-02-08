@@ -1,0 +1,67 @@
+name: Java Deploy
+
+on:
+  workflow_call:
+    inputs:
+      java_version:
+        required: false
+        type: string
+        default: '17'
+      java_distribution:
+        required: false
+        type: string
+        default: 'corretto'
+      service_name:
+        required: true
+        type: string
+    secrets:
+      aws_role_arn:
+        required: true
+      deployments_repo_token:
+        required: true
+
+env:
+  ECR_REGISTRY: '755999982163.dkr.ecr.ap-southeast-1.amazonaws.com'
+  AWS_REGION: 'ap-southeast-1'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: vars
+        run: |
+          BRANCH=${GITHUB_REF##*/}
+          SHORT_SHA=$(git rev-parse --short HEAD)
+
+          if [ "$BRANCH" = "master" ]; then ENV="prod";
+          elif [ "$BRANCH" = "dev" ]; then ENV="dev";
+          else ENV="staging"; fi
+
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "image_tag=${BRANCH}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - uses: ../.github/actions/java-gradle
+        with:
+          java_version: ${{ inputs.java_version }}
+          java_distribution: ${{ inputs.java_distribution }}
+          skip_tests: "true"
+
+      - uses: ../.github/actions/ecr
+        with:
+          aws_role_arn: ${{ secrets.aws_role_arn }}
+          aws_region: ${{ env.AWS_REGION }}
+          ecr_registry: ${{ env.ECR_REGISTRY }}
+          service_name: ${{ inputs.service_name }}
+          image_tag: ${{ steps.vars.outputs.image_tag }}
+          build_version: ${{ steps.vars.outputs.short_sha }}
+
+      - uses: ../.github/actions/helm
+        with:
+          deployments_repo_token: ${{ secrets.deployments_repo_token }}
+          environment: ${{ steps.vars.outputs.environment }}
+          service_name: ${{ inputs.service_name }}
+          image: ${{ env.ECR_REGISTRY }}/${{ inputs.service_name }}:${{ steps.vars.outputs.image_tag }}

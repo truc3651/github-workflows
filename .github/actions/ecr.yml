@@ -1,0 +1,38 @@
+name: "Docker Build & Push to ECR"
+
+inputs:
+  aws_role_arn:
+    required: true
+  aws_region:
+    required: true
+  ecr_registry:
+    required: true
+  service_name:
+    required: true
+  image_tag:
+    required: true
+  build_version:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws_role_arn }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - uses: aws-actions/amazon-ecr-login@v2
+    - uses: docker/setup-buildx-action@v3
+
+    - uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ inputs.ecr_registry }}/${{ inputs.service_name }}:latest
+          ${{ inputs.ecr_registry }}/${{ inputs.service_name }}:${{ inputs.image_tag }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILD_VERSION=${{ inputs.build_version }}

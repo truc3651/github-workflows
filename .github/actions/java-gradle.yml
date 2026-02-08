@@ -1,0 +1,31 @@
+name: "Java Gradle Setup & Build"
+
+inputs:
+  java_version:
+    required: true
+  java_distribution:
+    required: true
+  skip_tests:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java_version }}
+        distribution: ${{ inputs.java_distribution }}
+
+    - uses: gradle/actions/setup-gradle@v3
+
+    - name: Build with Gradle
+      shell: bash
+      run: |
+        if [ "${{ inputs.skip_tests }}" = "true" ]; then
+          ./gradlew build -x test
+        else
+          ./gradlew build
+        fi
+      env:
+        USERNAME: ${{ github.actor }}
+        TOKEN: ${{ github.token }}
