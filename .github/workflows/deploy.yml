@@ -15,14 +15,14 @@ on:
         required: true
         type: string
     secrets:
+      aws_region:
+        required: true
       aws_role_arn:
+        required: true
+      ecr_registry:
         required: true
       deployments_repo_token:
         required: true
-
-env:
-  ECR_REGISTRY: '755999982163.dkr.ecr.ap-southeast-1.amazonaws.com'
-  AWS_REGION: 'ap-southeast-1'
 
 jobs:
   deploy:
@@ -53,8 +53,8 @@ jobs:
       - uses: ../.github/actions/ecr
         with:
           aws_role_arn: ${{ secrets.aws_role_arn }}
-          aws_region: ${{ env.AWS_REGION }}
-          ecr_registry: ${{ env.ECR_REGISTRY }}
+          aws_region: ${{ secrets.aws_region }}
+          ecr_registry: ${{ secrets.ecr_registry }}
           service_name: ${{ inputs.service_name }}
           image_tag: ${{ steps.vars.outputs.image_tag }}
           build_version: ${{ steps.vars.outputs.short_sha }}
@@ -64,4 +64,4 @@ jobs:
           deployments_repo_token: ${{ secrets.deployments_repo_token }}
           environment: ${{ steps.vars.outputs.environment }}
           service_name: ${{ inputs.service_name }}
-          image: ${{ env.ECR_REGISTRY }}/${{ inputs.service_name }}:${{ steps.vars.outputs.image_tag }}
+          image: ${{ env.secrets.ecr_registry }}/${{ inputs.service_name }}:${{ steps.vars.outputs.image_tag }}
