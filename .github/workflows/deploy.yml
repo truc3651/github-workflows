@@ -44,24 +44,67 @@ jobs:
           echo "image_tag=${BRANCH}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-      - uses: ../.github/actions/java-gradle
+      - uses: actions/setup-java@v4
         with:
-          java_version: ${{ inputs.java_version }}
-          java_distribution: ${{ inputs.java_distribution }}
-          skip_tests: "true"
+          java-version: ${{ inputs.java_version }}
+          distribution: ${{ inputs.java_distribution }}
 
-      - uses: ../.github/actions/ecr
-        with:
-          aws_role_arn: ${{ secrets.aws_role_arn }}
-          aws_region: ${{ secrets.aws_region }}
-          ecr_registry: ${{ secrets.ecr_registry }}
-          service_name: ${{ inputs.service_name }}
-          image_tag: ${{ steps.vars.outputs.image_tag }}
-          build_version: ${{ steps.vars.outputs.short_sha }}
+      - uses: gradle/actions/setup-gradle@v3
 
-      - uses: ../.github/actions/helm
+      - name: Build with Gradle
+        shell: bash
+        run: ./gradlew build -x test
+        env:
+          USERNAME: ${{ github.actor }}
+          TOKEN: ${{ github.token }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          deployments_repo_token: ${{ secrets.deployments_repo_token }}
-          environment: ${{ steps.vars.outputs.environment }}
-          service_name: ${{ inputs.service_name }}
-          image: ${{ env.secrets.ecr_registry }}/${{ inputs.service_name }}:${{ steps.vars.outputs.image_tag }}
+          role-to-assume: ${{ secrets.aws_role_arn }}
+          aws-region: ${{ secrets.aws_region }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.ecr_registry }}/${{ inputs.service_name }}:latest
+            ${{ secrets.ecr_registry }}/${{ inputs.service_name }}:${{ steps.vars.outputs.image_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ steps.vars.outputs.short_sha }}
+            
+      - uses: actions/checkout@v4
+        with:
+          repository: 'truc3651/backend-deployments'
+          token: ${{ secrets.deployments_repo_token }}
+          path: backend-deployments
+
+      - name: Install yq
+        shell: bash
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update values.yaml
+        shell: bash
+        run: |
+          cd backend-deployments/apps/${{ steps.vars.outputs.environment }}/${{ inputs.service_name }}
+
+          yq eval ".image = \"${{ env.secrets.ecr_registry }}/${{ inputs.service_name }}:${{ steps.vars.outputs.image_tag }}\"" -i values.yaml
+          yq eval ".deploymentTimestamp = \"$(date +%s)\"" -i values.yaml
+
+      - name: Commit & push
+        shell: bash
+        run: |
+          cd backend-deployments
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add .
+          git commit -m "Update ${{ inputs.service_name }} image"
+          git push origin master
