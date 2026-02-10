@@ -1,17 +1,24 @@
 name: "Docker Build & Push to ECR"
+description: "Builds a Docker image and pushes it to AWS ECR."
 
 inputs:
   aws_role_arn:
+    description: ""
     required: true
   aws_region:
+    description: ""
     required: true
   ecr_registry:
+    description: ""
     required: true
   service_name:
+    description: ""
     required: true
   image_tag:
+    description: ""
     required: true
   build_version:
+    description: ""
     required: true
 
 runs:

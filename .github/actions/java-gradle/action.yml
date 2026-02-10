@@ -1,11 +1,15 @@
 name: "Java Gradle Setup & Build"
+description: "Sets up Java and Gradle environment and builds the project."
 
 inputs:
   java_version:
+    description: ""
     required: true
   java_distribution:
+    description: ""
     required: true
   skip_tests:
+    description: ""
     required: true
 
 runs:

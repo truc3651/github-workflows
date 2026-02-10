@@ -1,13 +1,18 @@
 name: "Update Helm values.yaml"
+description: "Updates the Helm chart values.yaml file with the new image and deployment timestamp."
 
 inputs:
   deployments_repo_token:
+    description: ""
     required: true
   environment:
+    description: ""
     required: true
   service_name:
+    description: ""
     required: true
   image:
+    description: ""
     required: true
 
 runs:
