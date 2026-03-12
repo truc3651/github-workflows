@@ -35,6 +35,13 @@ jobs:
 
      - uses: gradle/actions/setup-gradle@v3
 
+     - name: Run Spotless Check
+       shell: bash
+       run: ./gradlew spotlessCheck
+       env:
+         USERNAME: ${{ github.actor }}
+         TOKEN: ${{ github.token }}
+
      - name: Build with Gradle
        shell: bash
        run: ./gradlew build
