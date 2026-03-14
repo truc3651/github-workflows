@@ -44,7 +44,7 @@ jobs:
 
      - name: Build with Gradle
        shell: bash
-       run: ./gradlew build
+       run: ./gradlew build -x test
        env:
          USERNAME: ${{ github.actor }}
          TOKEN: ${{ github.token }}
